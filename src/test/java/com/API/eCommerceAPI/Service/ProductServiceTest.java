@@ -1,12 +1,13 @@
 package com.API.eCommerceAPI.Service;
 
-import com.API.eCommerceAPI.Model.Cart;
 import com.API.eCommerceAPI.Model.Product;
 import com.API.eCommerceAPI.Repository.ProductRepository;
+import org.hibernate.service.spi.ServiceException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.SpringVersion;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,34 +24,45 @@ public class ProductServiceTest {
     @MockBean
     ProductRepository productRepository;
 
-    Product product1 = Product.builder().product_id(1).name("meatballs").price(5.45).added_at("2024/12/14").labels(List.of("food")).build();
-    Product product2 = Product.builder().product_id(1).name("water").price(5.45).added_at("2024/12/14").labels(List.of("drink")).build();
+    @Test
+    public void testSaveNewProductSuccess(){
+        Product product = getValidProduct();
+        Product productNoId = getValidProduct();
+        productNoId.setProduct_id(0);
+
+        when(productRepository.save(productNoId)).thenReturn(product);
+
+        Product actualProduct = productService.saveNewProduct(productNoId);
+
+        assertEquals(actualProduct, product);
+    }
 
     @Test
-    public void testSave(){
-        when(productRepository.save(product1)).thenReturn(product1);
+    public void testSaveNewProductThrowsServiceExceptionWhenProductIdNotProvided(){
+        Product product = getValidProduct();
 
-        Product actualProduct = productService.save(product1);
-
-        assertEquals(actualProduct, product1);
+        assertThrows(ServiceException.class, () -> productService.saveNewProduct(product));
     }
 
     @Test
     public void testFindById(){
-        when(productRepository.findById(1)).thenReturn(Optional.of(product1));
+        Product product = getValidProduct();
+
+        when(productRepository.findById(1)).thenReturn(Optional.of(product));
 
         Product actualProduct = productService.findById(1);
 
-        assertEquals(actualProduct, product1);
+        assertEquals(actualProduct, product);
     }
 
     @Test
     public void testFindAll(){
-        when(productRepository.findAll()).thenReturn(List.of(product1, product2));
+        Product product = getValidProduct();
+        when(productRepository.findAll()).thenReturn(List.of(product));
 
         List<Product> actualProducts = productService.findAll();
 
-        assertEquals(List.of(product1, product2), actualProducts);
+        assertEquals(List.of(product), actualProducts);
     }
 
     @Test
@@ -64,6 +76,10 @@ public class ProductServiceTest {
     public void testFindByIdThrowsRuntimeExceptionWhenEmptyOptionalReturned(){
         when(productRepository.findById(1)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> productService.findById(1));
+        assertThrows(ServiceException.class, () -> productService.findById(1));
+    }
+
+    private Product getValidProduct () {
+        return Product.builder().product_id(1).name("meatballs").price(5.45).labels(List.of("food")).build();
     }
 }

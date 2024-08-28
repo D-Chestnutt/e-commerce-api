@@ -2,6 +2,7 @@ package com.API.eCommerceAPI.Service;
 
 import com.API.eCommerceAPI.Model.Product;
 import com.API.eCommerceAPI.Repository.ProductRepository;
+import org.hibernate.service.spi.ServiceException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,8 +14,12 @@ public class ProductService {
     @Autowired
     ProductRepository productRepository;
 
-    public Product save(Product product) {
-        return productRepository.save(product);
+    public Product saveNewProduct(Product product) {
+        if(product.getProduct_id() == 0){
+            return productRepository.save(product);
+        } else{
+            throw new ServiceException("product_id is generated at write and should not be provided.");
+        }
     }
 
     public Product findById(int productId) {
@@ -23,7 +28,7 @@ public class ProductService {
         if(optionalProduct.isPresent()){
             return optionalProduct.get();
         } else {
-            throw new RuntimeException("Unable to find product with id:" + productId);
+            throw new ServiceException("Unable to find product with id:" + productId);
         }
     }
 

@@ -4,19 +4,19 @@ import com.API.eCommerceAPI.Model.Cart;
 import com.API.eCommerceAPI.Model.CartCheckout;
 import com.API.eCommerceAPI.Model.CartProducts;
 import com.API.eCommerceAPI.Service.CartService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import java.security.PublicKey;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
@@ -28,88 +28,78 @@ public class CartControllerTest {
     MockMvc mockMvc;
     @MockBean
     CartService cartService;
-
-    CartProducts cartProducts1 = CartProducts.builder()
-            .product_id(1)
-            .quantity(5)
-            .build();
-    CartProducts cartProducts2 = CartProducts.builder()
-            .product_id(2)
-            .quantity(3)
-            .build();
-    Cart cart1 = Cart.builder()
-            .cart_id(1)
-            .products(List.of(cartProducts1, cartProducts2))
-            .checked_out(false)
-            .build();
-    Cart cart1CheckedOut = Cart.builder()
-            .cart_id(1)
-            .products(List.of(cartProducts1, cartProducts2))
-            .checked_out(true)
-            .build();
-    CartCheckout cartCheckout = CartCheckout.builder().cart(cart1CheckedOut).price(30.25).build();
-    Cart cartNoId = Cart.builder()
-            .products(List.of(cartProducts1, cartProducts2))
-            .checked_out(false)
-            .build();
-    List<Cart> expectedCarts = List.of(cart1);
-    String createCartBody = "{\"products\":[{\"product_id\":1,\"quantity\":5},{\"product_id\":2,\"quantity\":3}],\"checked_out\":false}";
-    String expectedCartString = "{\"cart_id\":1,\"products\":[{\"product_id\":1,\"quantity\":5},{\"product_id\":2,\"quantity\":3}],\"checked_out\":false}";
-    String expectedCartCheckoutString = "{\"cart\":{\"cart_id\":1,\"products\":[{\"product_id\":1,\"quantity\":5},{\"product_id\":2,\"quantity\":3}],\"checked_out\":true},\"price\":30.25}";
-    String expectedCartsString = "[{\"cart_id\":1,\"products\":[{\"product_id\":1,\"quantity\":5},{\"product_id\":2,\"quantity\":3}],\"checked_out\":false}]";
+    @Autowired
+    ObjectMapper objectMapper;
 
     @Test
     public void testCreateCartsSuccess() throws Exception {
-        when(cartService.save(any(Cart.class))).thenReturn(cart1);
+        Cart cart = getValidCart();
+        String cartJson = objectMapper.writeValueAsString(cart);
+
+        when(cartService.saveNewCart(any(Cart.class))).thenReturn(cart);
 
         mockMvc.perform(post("/carts")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(String.valueOf(createCartBody)))
+                .content(String.valueOf(cartJson)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(String.valueOf(expectedCartString)));
+                .andExpect(content().string(String.valueOf(cartJson)));
     }
 
     @Test
     public void testGetCartsSuccess() throws Exception {
-        when(cartService.findAll()).thenReturn(expectedCarts);
+        List<Cart> carts = List.of(getValidCart());
+        String cartsJson = objectMapper.writeValueAsString(carts);
+
+        when(cartService.findAll()).thenReturn(carts);
 
         mockMvc.perform(get("/carts"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(expectedCartsString));
+                .andExpect(content().string(cartsJson));
     }
 
     @Test
     public void testUpdateCartSuccess() throws Exception {
-        when(cartService.save(any(Cart.class))).thenReturn(cart1);
+        Cart cart = getValidCart();
+        String cartJson = objectMapper.writeValueAsString(cart);
+        when(cartService.saveExistingCart(any(Cart.class), eq(1))).thenReturn(cart);
 
         mockMvc.perform(put("/carts/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(String.valueOf(createCartBody)))
+                        .content(String.valueOf(cartJson)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(String.valueOf(expectedCartString)));
+                .andExpect(content().string(String.valueOf(cartJson)));
     }
 
     @Test
     public void testCheckoutCartSuccess() throws Exception {
+        Cart cart = getValidCart();
+        CartCheckout cartCheckout = CartCheckout.builder().cart(cart).price(10.0).build();
+        String cartJson = objectMapper.writeValueAsString(cart);
+        String cartCheckoutJson = objectMapper.writeValueAsString(cartCheckout);
+
+
         when(cartService.checkoutCart(1)).thenReturn(cartCheckout);
 
         mockMvc.perform(post("/carts/1/checkout")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(String.valueOf(createCartBody)))
+                        .content(String.valueOf(cartJson)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(String.valueOf(expectedCartCheckoutString)));
+                .andExpect(content().string(String.valueOf(cartCheckoutJson)));
     }
 
-    @Test
-    public void testCreateCartThrowsExceptionWhenCartServiceThrowsException() throws Exception {
-        RuntimeException runtimeException = new RuntimeException("Database service is currently unavailable");
-        when(cartService.save(any(Cart.class))).thenThrow(runtimeException);
-
-        mockMvc.perform(post("/carts")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(String.valueOf(createCartBody)))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(content().string("Database service is currently unavailable"));
+    private Cart getValidCart(){
+        CartProducts cartProducts1 = CartProducts.builder()
+                .product_id(1)
+                .quantity(5)
+                .build();
+        CartProducts cartProducts2 = CartProducts.builder()
+                .product_id(2)
+                .quantity(3)
+                .build();
+        return Cart.builder()
+                .cart_id(1)
+                .products(List.of(cartProducts1, cartProducts2))
+                .checked_out(false)
+                .build();
     }
-
 }

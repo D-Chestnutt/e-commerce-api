@@ -1,6 +1,7 @@
 package com.API.eCommerceAPI.Model;
 
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import lombok.*;
 
 import java.util.List;
@@ -12,12 +13,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString
 public class Cart {
     @Id
     @GeneratedValue
     private int cart_id;
     @ElementCollection
+    @Valid
     private List<CartProducts> products;
     private boolean checked_out;
 
